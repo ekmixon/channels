@@ -54,7 +54,7 @@ class Command(RunserverCommand):
         )
 
     def handle(self, *args, **options):
-        self.http_timeout = options.get("http_timeout", None)
+        self.http_timeout = options.get("http_timeout")
         self.websocket_handshake_timeout = options.get("websocket_handshake_timeout", 5)
         # Check Channels is installed right
         if options["use_asgi"] and not hasattr(settings, "ASGI_APPLICATION"):
@@ -84,17 +84,18 @@ class Command(RunserverCommand):
                 "Starting ASGI/Channels version %(channels_version)s development server"
                 " at %(protocol)s://%(addr)s:%(port)s/\n"
                 "Quit the server with %(quit_command)s.\n"
+                % {
+                    "version": self.get_version(),
+                    "channels_version": __version__,
+                    "settings": settings.SETTINGS_MODULE,
+                    "protocol": self.protocol,
+                    "addr": f"[{self.addr}]" if self._raw_ipv6 else self.addr,
+                    "port": self.port,
+                    "quit_command": quit_command,
+                }
             )
-            % {
-                "version": self.get_version(),
-                "channels_version": __version__,
-                "settings": settings.SETTINGS_MODULE,
-                "protocol": self.protocol,
-                "addr": "[%s]" % self.addr if self._raw_ipv6 else self.addr,
-                "port": self.port,
-                "quit_command": quit_command,
-            }
         )
+
 
         # Launch server in 'main' thread. Signals are disabled as it's still
         # actually a subthread under the autoreloader.
@@ -114,8 +115,7 @@ class Command(RunserverCommand):
             ).run()
             logger.debug("Daphne exited")
         except KeyboardInterrupt:
-            shutdown_message = options.get("shutdown_message", "")
-            if shutdown_message:
+            if shutdown_message := options.get("shutdown_message", ""):
                 self.stdout.write(shutdown_message)
             return
 

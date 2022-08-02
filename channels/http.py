@@ -47,10 +47,8 @@ class AsgiRequest(http.HttpRequest):
         # django path is different from asgi scope path args, it should combine
         # with script name
         if self.script_name:
-            self.path = "%s/%s" % (
-                self.script_name.rstrip("/"),
-                self.path_info.replace("/", "", 1),
-            )
+            self.path = f'{self.script_name.rstrip("/")}/{self.path_info.replace("/", "", 1)}'
+
         else:
             self.path = scope["path"]
 
@@ -92,12 +90,12 @@ class AsgiRequest(http.HttpRequest):
             elif name == "content-type":
                 corrected_name = "CONTENT_TYPE"
             else:
-                corrected_name = "HTTP_%s" % name.upper().replace("-", "_")
+                corrected_name = f'HTTP_{name.upper().replace("-", "_")}'
             # HTTPbis say only ASCII chars are allowed in headers, but we
             # use latin1 just in case
             value = value.decode("latin1")
             if corrected_name in self.META:
-                value = self.META[corrected_name] + "," + value
+                value = f"{self.META[corrected_name]},{value}"
             self.META[corrected_name] = value
         # Pull out request encoding if we find it
         if "CONTENT_TYPE" in self.META:
@@ -185,9 +183,9 @@ class AsgiHandler(base.BaseHandler):
         """
         if scope["type"] != "http":
             raise ValueError(
-                "The AsgiHandler can only handle HTTP connections, not %s"
-                % scope["type"]
+                f'The AsgiHandler can only handle HTTP connections, not {scope["type"]}'
             )
+
 
         # Receive the HTTP request body as a stream object.
         try:
@@ -314,10 +312,11 @@ class AsgiHandler(base.BaseHandler):
             if isinstance(value, str):
                 value = value.encode("latin1")
             response_headers.append((bytes(header), bytes(value)))
-        for c in response.cookies.values():
-            response_headers.append(
-                (b"Set-Cookie", c.output(header="").encode("latin1").strip())
-            )
+        response_headers.extend(
+            (b"Set-Cookie", c.output(header="").encode("latin1").strip())
+            for c in response.cookies.values()
+        )
+
         # Make initial response message
         yield {
             "type": "http.response.start",

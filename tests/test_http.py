@@ -420,7 +420,7 @@ async def test_sessions():
 
     samesite = re.compile(r"SameSite=(\w+)").search(value)
     assert samesite is not None
-    assert samesite.group(1) == "Lax"
+    assert samesite[1] == "Lax"
 
 
 @pytest.mark.django_db(transaction=True)
@@ -440,7 +440,7 @@ async def test_session_samesite(samesite, settings):
 
     samesite = re.compile(r"SameSite=(\w+)").search(value)
     assert samesite is not None
-    assert samesite.group(1) == settings.SESSION_COOKIE_SAMESITE
+    assert samesite[1] == settings.SESSION_COOKIE_SAMESITE
 
 
 @pytest.mark.django_db(transaction=True)

@@ -36,13 +36,15 @@ class CookieMiddleware:
                 + "(make sure it is only passed HTTP or WebSocket connections)"
             )
         # Go through headers to find the cookie one
-        for name, value in scope.get("headers", []):
-            if name == b"cookie":
-                cookies = parse_cookie(value.decode("latin1"))
-                break
-        else:
-            # No cookie header found - add an empty default.
-            cookies = {}
+        cookies = next(
+            (
+                parse_cookie(value.decode("latin1"))
+                for name, value in scope.get("headers", [])
+                if name == b"cookie"
+            ),
+            {},
+        )
+
         # Return inner application
         return await self.inner(dict(scope, cookies=cookies), receive, send)
 
@@ -72,22 +74,21 @@ class CookieMiddleware:
         value = force_str(value)
         cookies = SimpleCookie()
         cookies[key] = value
-        if expires is not None:
-            if isinstance(expires, datetime.datetime):
-                if timezone.is_aware(expires):
-                    expires = timezone.make_naive(expires, timezone.utc)
-                delta = expires - expires.utcnow()
-                # Add one second so the date matches exactly (a fraction of
-                # time gets lost between converting to a timedelta and
-                # then the date string).
-                delta = delta + datetime.timedelta(seconds=1)
-                # Just set max_age - the max_age logic will set expires.
-                expires = None
-                max_age = max(0, delta.days * 86400 + delta.seconds)
-            else:
-                cookies[key]["expires"] = expires
-        else:
+        if expires is None:
             cookies[key]["expires"] = ""
+        elif isinstance(expires, datetime.datetime):
+            if timezone.is_aware(expires):
+                expires = timezone.make_naive(expires, timezone.utc)
+            delta = expires - expires.utcnow()
+            # Add one second so the date matches exactly (a fraction of
+            # time gets lost between converting to a timedelta and
+            # then the date string).
+            delta = delta + datetime.timedelta(seconds=1)
+            # Just set max_age - the max_age logic will set expires.
+            expires = None
+            max_age = max(0, delta.days * 86400 + delta.seconds)
+        else:
+            cookies[key]["expires"] = expires
         if max_age is not None:
             cookies[key]["max-age"] = max_age
             # IE requires expires, so set it if hasn't been already.

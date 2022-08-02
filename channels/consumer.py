@@ -48,10 +48,7 @@ class AsyncConsumer:
                 self.channel_layer.receive, self.channel_name
             )
         # Store send function
-        if self._sync:
-            self.base_send = async_to_sync(send)
-        else:
-            self.base_send = send
+        self.base_send = async_to_sync(send) if self._sync else send
         # Pass messages in from channel layer or client to dispatch method
         try:
             if self.channel_layer is not None:
@@ -68,11 +65,10 @@ class AsyncConsumer:
         """
         Works out what to do with a message.
         """
-        handler = getattr(self, get_handler_name(message), None)
-        if handler:
+        if handler := getattr(self, get_handler_name(message), None):
             await handler(message)
         else:
-            raise ValueError("No handler for message type %s" % message["type"])
+            raise ValueError(f'No handler for message type {message["type"]}')
 
     async def send(self, message):
         """
@@ -119,12 +115,10 @@ class SyncConsumer(AsyncConsumer):
         """
         Dispatches incoming messages to type-based handlers asynchronously.
         """
-        # Get and execute the handler
-        handler = getattr(self, get_handler_name(message), None)
-        if handler:
+        if handler := getattr(self, get_handler_name(message), None):
             handler(message)
         else:
-            raise ValueError("No handler for message type %s" % message["type"])
+            raise ValueError(f'No handler for message type {message["type"]}')
 
     def send(self, message):
         """

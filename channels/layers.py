@@ -50,21 +50,21 @@ class ChannelLayerManager:
         try:
             config = self.configs[name]["TEST_CONFIG"]
         except KeyError:
-            raise InvalidChannelLayerError("No TEST_CONFIG specified for %s" % name)
+            raise InvalidChannelLayerError(f"No TEST_CONFIG specified for {name}")
         return self._make_backend(name, config)
 
     def _make_backend(self, name, config):
         # Check for old format config
         if "ROUTING" in self.configs[name]:
             raise InvalidChannelLayerError(
-                "ROUTING key found for %s - this is no longer needed in Channels 2."
-                % name
+                f"ROUTING key found for {name} - this is no longer needed in Channels 2."
             )
+
         # Load the backend class
         try:
             backend_class = import_string(self.configs[name]["BACKEND"])
         except KeyError:
-            raise InvalidChannelLayerError("No BACKEND specified for %s" % name)
+            raise InvalidChannelLayerError(f"No BACKEND specified for {name}")
         except ImportError:
             raise InvalidChannelLayerError(
                 "Cannot import BACKEND %r specified for %s"
@@ -125,15 +125,17 @@ class BaseChannelLayer:
         result; if you want to control the order of matches, use an ordered dict
         as input.
         """
-        for pattern, capacity in self.channel_capacity:
-            if pattern.match(channel):
-                return capacity
-        return self.capacity
+        return next(
+            (
+                capacity
+                for pattern, capacity in self.channel_capacity
+                if pattern.match(channel)
+            ),
+            self.capacity,
+        )
 
     def match_type_and_length(self, name):
-        if isinstance(name, str) and (len(name) < 100):
-            return True
-        return False
+        return isinstance(name, str) and len(name) < 100
 
     # Name validation functions
 
@@ -145,30 +147,34 @@ class BaseChannelLayer:
     )
 
     def valid_channel_name(self, name, receive=False):
-        if self.match_type_and_length(name):
-            if bool(self.channel_name_regex.match(name)):
-                # Check cases for special channels
-                if "!" in name and not name.endswith("!") and receive:
-                    raise TypeError(
-                        "Specific channel names in receive() must end at the !"
-                    )
-                return True
+        if self.match_type_and_length(name) and bool(
+            self.channel_name_regex.match(name)
+        ):
+            # Check cases for special channels
+            if "!" in name and not name.endswith("!") and receive:
+                raise TypeError(
+                    "Specific channel names in receive() must end at the !"
+                )
+            return True
         raise TypeError(
-            "Channel name must be a valid unicode string containing only ASCII "
-            + "alphanumerics, hyphens, or periods, not '{}'.".format(name)
+            (
+                "Channel name must be a valid unicode string containing only ASCII "
+                + f"alphanumerics, hyphens, or periods, not '{name}'."
+            )
         )
 
     def valid_group_name(self, name):
-        if self.match_type_and_length(name):
-            if bool(self.group_name_regex.match(name)):
-                return True
+        if self.match_type_and_length(name) and bool(
+            self.group_name_regex.match(name)
+        ):
+            return True
         raise TypeError(
             "Group name must be a valid unicode string containing only ASCII "
             + "alphanumerics, hyphens, or periods."
         )
 
     def valid_channel_names(self, names, receive=False):
-        _non_empty_list = True if names else False
+        _non_empty_list = bool(names)
         _names_type = isinstance(names, list)
         assert _non_empty_list and _names_type, "names must be a non-empty list"
 
@@ -183,10 +189,7 @@ class BaseChannelLayer:
         is a process-specific channel (contains !) this means the part up to
         and including the !; if it is anything else, this means the full name.
         """
-        if "!" in name:
-            return name[: name.find("!") + 1]
-        else:
-            return name
+        return name[: name.find("!") + 1] if "!" in name else name
 
 
 class InMemoryChannelLayer(BaseChannelLayer):
@@ -260,10 +263,7 @@ class InMemoryChannelLayer(BaseChannelLayer):
         Returns a new channel name that can be used by something in our
         process as a specific channel.
         """
-        return "%s.inmemory!%s" % (
-            prefix,
-            "".join(random.choice(string.ascii_letters) for i in range(12)),
-        )
+        return f'{prefix}.inmemory!{"".join(random.choice(string.ascii_letters) for _ in range(12))}'
 
     # Expire cleanup
 

@@ -31,14 +31,12 @@ class OriginValidator:
                     parsed_origin = urlparse(header_value.decode("latin1"))
                 except UnicodeDecodeError:
                     pass
-        # Check to see if the origin header is valid
         if self.valid_origin(parsed_origin):
             # Pass control to the application
             return await self.application(scope, receive, send)
-        else:
-            # Deny the connection
-            denier = WebsocketDenier()
-            return await denier(scope, receive, send)
+        # Deny the connection
+        denier = WebsocketDenier()
+        return await denier(scope, receive, send)
 
     def valid_origin(self, parsed_origin):
         """
@@ -99,20 +97,20 @@ class OriginValidator:
         if parsed_origin.hostname is None:
             return False
         if not parsed_pattern.scheme:
-            pattern_hostname = urlparse("//" + pattern).hostname or pattern
+            pattern_hostname = urlparse(f"//{pattern}").hostname or pattern
             return is_same_domain(parsed_origin.hostname, pattern_hostname)
         # Get origin.port or default ports for origin or None
         origin_port = self.get_origin_port(parsed_origin)
         # Get pattern.port or default ports for pattern or None
         pattern_port = self.get_origin_port(parsed_pattern)
         # Compares hostname, scheme, ports of pattern and origin
-        if (
-            parsed_pattern.scheme == parsed_origin.scheme
-            and origin_port == pattern_port
-            and is_same_domain(parsed_origin.hostname, parsed_pattern.hostname)
-        ):
-            return True
-        return False
+        return bool(
+            (
+                parsed_pattern.scheme == parsed_origin.scheme
+                and origin_port == pattern_port
+                and is_same_domain(parsed_origin.hostname, parsed_pattern.hostname)
+            )
+        )
 
     def get_origin_port(self, origin):
         """
@@ -123,10 +121,10 @@ class OriginValidator:
             # Return origin.port
             return origin.port
         # if origin.port doesn`t exists
-        if origin.scheme == "http" or origin.scheme == "ws":
+        if origin.scheme in ["http", "ws"]:
             # Default port return for http, ws
             return 80
-        elif origin.scheme == "https" or origin.scheme == "wss":
+        elif origin.scheme in ["https", "wss"]:
             # Default port return for https, wss
             return 443
         else:

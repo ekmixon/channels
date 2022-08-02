@@ -23,11 +23,11 @@ class ChannelsLiveServerTestCase(TransactionTestCase):
 
     @property
     def live_server_url(self):
-        return "http://%s:%s" % (self.host, self._port)
+        return f"http://{self.host}:{self._port}"
 
     @property
     def live_server_ws_url(self):
-        return "ws://%s:%s" % (self.host, self._port)
+        return f"ws://{self.host}:{self._port}"
 
     def _pre_setup(self):
         for connection in connections.all():

@@ -88,9 +88,7 @@ def route_pattern_match(route, path):
             return path, args, kwargs
         return match
 
-    # Django<2.0. No converters... :-(
-    match = route.regex.search(path)
-    if match:
+    if match := route.regex.search(path):
         # If there are any named groups, use those as kwargs, ignoring
         # non-named groups. Otherwise, pass all non-named arguments as
         # positional arguments.
@@ -122,7 +120,7 @@ class URLRouter:
         for route in self.routes:
             # The inner ASGI app wants to do additional routing, route
             # must not be an endpoint
-            if getattr(route.callback, "_path_routing", False) is True:
+            if getattr(route.callback, "_path_routing", False):
                 route.pattern._is_endpoint = False
 
             if not route.callback and isinstance(route, URLResolver):
@@ -138,11 +136,9 @@ class URLRouter:
             raise ValueError("No 'path' key in connection scope, cannot route URLs")
         # Remove leading / to match Django's handling
         path = path.lstrip("/")
-        # Run through the routes we have until one matches
         for route in self.routes:
             try:
-                match = route_pattern_match(route, path)
-                if match:
+                if match := route_pattern_match(route, path):
                     new_path, args, kwargs = match
                     # Add args or kwargs into the scope
                     outer = scope.get("url_route", {})
@@ -161,11 +157,10 @@ class URLRouter:
                     )
             except Resolver404:
                 pass
-        else:
-            if "path_remaining" in scope:
-                raise Resolver404("No route found for path %r." % path)
-            # We are the outermost URLRouter
-            raise ValueError("No route found for path %r." % path)
+        if "path_remaining" in scope:
+            raise Resolver404("No route found for path %r." % path)
+        # We are the outermost URLRouter
+        raise ValueError("No route found for path %r." % path)
 
 
 class ChannelNameRouter:

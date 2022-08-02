@@ -14,7 +14,7 @@ class WebsocketCommunicator(ApplicationCommunicator):
 
     def __init__(self, application, path, headers=None, subprotocols=None):
         if not isinstance(path, str):
-            raise TypeError("Expected str, got {}".format(type(path)))
+            raise TypeError(f"Expected str, got {type(path)}")
         parsed = urlparse(path)
         self.scope = {
             "type": "websocket",
